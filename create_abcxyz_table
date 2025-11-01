@@ -87,3 +87,18 @@ proc print data=work.product_analysis(obs=10);
     var product_id total_profit cum_pct ABC avg_quantity std_quantity coef_var XYZ 'ABC/XYZ'n;
 run;
 
+/* Produce ABC totals */
+ods noproctitle;
+ods graphics / imagemap=on;
+
+proc sort data=WORK.PRODUCT_ANALYSIS out=WORK.TempSorted2236;
+	by ABC;
+run;
+proc means data=WORK.TempSorted2236 chartype n sum vardef=df;
+	var total_profit;
+	by ABC;
+run;
+proc datasets library=WORK noprint;
+	delete TempSorted2236;
+	run;
+
