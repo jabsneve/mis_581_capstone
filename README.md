@@ -1,7 +1,5 @@
 # ABC/XYZ Analysis + Time-Series Forecasting for Retail Inventory Optimization
 
-> Capstone project integrating ABC/XYZ inventory classification with statistical time-series analysis to support inventory optimization.
-
 ## Summary
 - **Goal:** Build a BI/analytics framework that blends profit-based ABC and variability-based XYZ classification with ACF/PACF diagnostics and Ljung–Box tests to guide model selection and inventory policy.
 - **Data:** Synthetic DataCo Smart Supply Chain transactions across 37 months.
