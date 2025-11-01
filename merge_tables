@@ -1,0 +1,13 @@
+/* Merge ABC, XYZ, and ABC/XYZ back into the original dataco dataset */
+proc sql;
+    create table work.dataco_final as
+    select 
+        a.*,                       
+        b.ABC,
+        b.XYZ,
+        b.'ABC/XYZ'n
+    from work.dataco1 as a
+    left join work.product_analysis as b
+        on a.product_id = b.product_id
+    order by a.product_id;
+quit;
