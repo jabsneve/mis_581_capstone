@@ -1,0 +1,40 @@
+/* Create a subset table */
+data work.dataco_subset;
+    set work.dataco_final(
+        keep=order_id order_date product_id quantity gross_revenue net_revenue profit ABC XYZ "ABC/XYZ"n
+        rename=("ABC/XYZ"n = ABC_XYZ)
+    );
+run;
+
+/* Calculate ACF and PACF */
+proc sql;
+    create table work.xyz_monthly_quantity as
+    select 
+        XYZ,
+        intnx('month', order_date, 0, 'b') as month format=monyy7.,
+        sum(quantity) as total_quantity
+    from work.dataco_subset
+    where order_date < '01SEP2017'd     /* (optional) */
+    group by XYZ, calculated month
+    order by XYZ, calculated month;
+quit;
+
+/* Turn on ODS Graphics for plots if you also want ARIMA-identify plots */
+ods graphics on;
+
+/* IDENTIFY produces ACF, PACF, and white-noise tests (Ljung–Box). 
+   STATIONARITY=(ADF=(0,1,12)) runs unit-root tests with 0/1/12 differences. */
+proc arima data=work.xyz_monthly_quantity;
+    by XYZ;
+    identify var=total_quantity nlag=24
+             stationarity=(adf=(0,1,12));
+    /* No estimate/forecast here—just identification + diagnostics. */
+
+    /* Capture the tables to datasets */
+    ods output
+        Autocorr         = work.out_acf            /* ACF by lag */
+        Pacf             = work.out_pacf           /* PACF by lag */
+        WhiteNoiseTest   = work.out_ljungbox       /* Ljung–Box Q at lags */
+        StationarityTests= work.out_adf;           /* ADF results */
+quit;
+ods graphics off;
