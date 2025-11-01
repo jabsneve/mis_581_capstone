@@ -1,0 +1,89 @@
+/* Import the dataset */
+%web_drop_table(WORK.dataco);
+FILENAME REFFILE '/home/u63963464/MIS581/DataCoSupplyChainDataset_clean.csv';
+PROC IMPORT DATAFILE=REFFILE
+	DBMS=CSV
+	OUT=WORK.dataco;
+	GETNAMES=YES;
+RUN;
+PROC CONTENTS DATA=WORK.dataco; RUN;
+%web_open_table(WORK.dataco);
+
+/* Create the ABC/XYZ table */
+/* Aggregate total profit per product_id and sort high to low */
+proc sql;
+    create table work.product_profit as
+    select 
+        product_id,
+        sum(profit) as total_profit
+    from work.dataco1
+    group by product_id
+    order by calculated total_profit desc;
+quit;
+
+/* Calculate the total profit */
+proc sql noprint;
+    select sum(total_profit)
+    into :grand_total
+    from work.product_profit;
+quit;
+
+/* Add cumulative profit, cumulative %, and ABC classification */
+data work.product_profit;
+    set work.product_profit;
+    retain cum_profit 0;
+    cum_profit + total_profit;
+    if &grand_total. > 0 then cum_pct = 100 * cum_profit / &grand_total.;
+    else cum_pct = .;
+    length ABC $1;
+    if cum_pct < 50 then ABC = 'A';
+    else if cum_pct < 80 then ABC = 'B';
+    else ABC = 'C';
+    format cum_pct 8.2;
+run;
+
+/* Compute mean, std dev, coefficient of variation */
+proc sql;
+    create table work.quantity_stats as
+    select 
+        product_id,
+        mean(quantity) as avg_quantity,
+        std(quantity)  as std_quantity,
+        round(calculated std_quantity / calculated avg_quantity, 0.1) as coef_var
+    from work.dataco
+    group by product_id;
+quit;
+
+/* Merge quantity statistics with ABC results */
+proc sql;
+    create table work.product_analysis as
+    select 
+        a.product_id,
+        a.total_profit,
+        a.cum_profit,
+        a.cum_pct,
+        a.ABC,
+        b.avg_quantity,
+        b.std_quantity,
+        b.coef_var
+    from work.product_profit as a
+    left join work.quantity_stats as b
+    on a.product_id = b.product_id
+    order by a.total_profit desc;
+quit;
+
+/* Add XYZ and ABC/XYZ columns based on coef_var */
+data work.product_analysis;
+    set work.product_analysis;
+    length XYZ $1;
+    if missing(coef_var) then XYZ = '';
+    else if coef_var = 0 then XYZ = 'X';
+    else if coef_var < 0.5 then XYZ = 'Y';
+    else XYZ = 'Z';
+    'ABC/XYZ'n = cats(ABC, XYZ);
+run;
+
+proc print data=work.product_analysis(obs=10);
+    var product_id total_profit cum_pct ABC avg_quantity std_quantity coef_var XYZ 'ABC/XYZ'n;
+run;
+
