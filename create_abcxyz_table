@@ -90,7 +90,6 @@ run;
 /* Produce ABC totals */
 ods noproctitle;
 ods graphics / imagemap=on;
-
 proc sort data=WORK.PRODUCT_ANALYSIS out=WORK.TempSorted2236;
 	by ABC;
 run;
